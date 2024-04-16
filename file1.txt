@@ -1,0 +1,15 @@
+#include <cstdlib>
+#include <iostream>
+
+int main() {
+    // Создаем rar архив с файлами file1.txt и file2.txt на диске D в WSL
+    int result = std::system("rar a /mnt/d/archive.rar file1.txt file2.txt");
+
+    if (result == 0) {
+        std::cout << "Архив успешно создан!\n";
+    } else {
+        std::cout << "Ошибка: архив не создан.\n";
+    }
+
+    return 0;
+}
