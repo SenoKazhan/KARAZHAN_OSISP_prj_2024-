@@ -305,24 +305,39 @@ void createArchive(const char *archiveName, const char *files[], int numFiles, c
     }
     system(command);
 }
-
-// Извлечение из архива
-void extractArchive(const char *filePath)
-{
-    char *directory = dirname(strdup(filePath)); // Получаем имя каталога из пути к файлу
-    if (directory == NULL)
-    {
-        // Ошибка получения имени каталога
-        mvwprintw(status_win, 0, 0, "Error extracting archive: Unable to determine directory.");
-        wrefresh(status_win);
+void logToFile(const char *filePath, const char *directory) {
+    FILE *file = fopen("/home/seno/proj/project/test.txt", "a");
+    if (file == NULL) {
+        printf("Failed to open file for writing.\n");
         return;
     }
 
+    fprintf(file, "File Path: %s\n", filePath);
+    fprintf(file, "Directory: %s\n", directory);
+
+    fclose(file);
+}
+// Извлечение из архива
+void extractArchive(const char *filePath)
+{
+    // Создаем копию filePath
+    char *directory = strdup(filePath);
+    if (directory == NULL)
+    {
+        // Ошибка выделения памяти
+        printf("Error extracting archive: Unable to allocate memory.\n");
+        return;
+    }
+
+    // Получаем имя каталога из копии filePath
+    char *dirName = dirname(directory);
+
+    // Записываем информацию о filePath и directory в файл
+    logToFile(filePath, dirName);
 endwin();
     pid_t pid = fork();
     if (pid == 0)
     {
-
         // Дочерний процесс
         char command[1024];
         const char *extension = strrchr(filePath, '.');
@@ -331,20 +346,19 @@ endwin();
             extension++; // Пропускаем точку
             if (strcmp(extension, "rar") == 0)
             {
-                snprintf(command, sizeof(command), "/usr/bin/unrar e %s %s", filePath, directory);
+                snprintf(command, sizeof(command), "/usr/bin/unrar e %s %s", filePath, dirName);
             }
             else if (strcmp(extension, "gz") == 0)
             {
-                
-                sprintf(command, "gzip -d %s -c %s", filePath, directory);
+                snprintf(command, sizeof(command), "gzip -d %s -c %s", filePath, dirName);
             }
             else if (strcmp(extension, "bz2") == 0)
             {
-                sprintf(command, "bzip2 -d %s -c %s", filePath, directory);
+                snprintf(command, sizeof(command), "bzip2 -d %s -c %s", filePath, dirName);
             }
             else if (strcmp(extension, "zip") == 0)
             {
-                sprintf(command, "unzip -d %s %s", directory, filePath);
+                snprintf(command, sizeof(command), "unzip -d %s %s", dirName, filePath);
             }
             else
             {
@@ -363,8 +377,7 @@ endwin();
     else if (pid < 0)
     {
         // Ошибка при создании дочернего процесса
-        mvwprintw(status_win, 0, 0, "Failed to fork process.");
-        wrefresh(status_win);
+        printf("Failed to fork process.\n");
     }
     else
     {
@@ -374,15 +387,12 @@ endwin();
         if (!WIFEXITED(status) || WEXITSTATUS(status) != 0)
         {
             // Код завершения не нулевой, возможно, произошла ошибка
-            mvwprintw(status_win, 0, 0, "Error extracting archive.");
-            wrefresh(status_win);
+            printf("Error extracting archive.\n");
         }
     }
-
-    free(directory); // Освобождаем память, выделенную для имени каталога
-    refresh();
+refresh();
+free(directory); // Освобождаем память, выделенную для копии filePath
 }
-
 
 void openFileWithEvince(char *filepath)
 {
@@ -934,14 +944,7 @@ case 'x': {
     const char *selectedFileName = (activePanel == 1) ? fileList1.entries[fileList1.selected].name : fileList2.entries[fileList2.selected].name;
     char fullPath[PATH_MAX];
     snprintf(fullPath, sizeof(fullPath), "%s/%s", currentPath, selectedFileName);
-
-    const char *extension = strrchr(selectedFileName, '.');
-    if (extension != NULL && (strcmp(extension, ".tar") == 0 || strcmp(extension, ".gz") == 0 || strcmp(extension, ".bz2") == 0 || strcmp(extension, ".zip") == 0)) {
         extractArchive(fullPath);
-    } else {
-        mvwprintw(status_win, 0, 0, "Selected file is not a recognized archive format.");
-        wrefresh(status_win);
-    }
 }
 break;
         case '\t': // Tab key
