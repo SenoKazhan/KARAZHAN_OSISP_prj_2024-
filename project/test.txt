@@ -1,6 +1,80 @@
-File Path: 
-Directory: .
-File Path: /home/seno/proj/fciles/jgh.rar
-Directory: /home/seno/proj/fciles
-File Path: /home/seno/proj/fciles/jgh.rar
-Directory: /home/seno/proj/fciles
+File Path: /home/seno/left/test.tar
+Directory: /home/seno/left
+File Path: /home/seno/left/wqw.rar
+Directory: /home/seno/left
+File Path: /home/seno/left/we.rar
+Directory: /home/seno/left
+File Path: /home/seno/left/lol.rar
+Directory: /home/seno/left
+File Path: /home/seno/left/qww.rar
+Directory: /home/seno/left
+File Path: /home/seno/left/qww.rar
+Directory: /home/seno/left
+File Path: /home/seno/left/qww.rar
+Directory: /home/seno/left
+File Path: /home/seno/left/qww.rar
+Directory: /home/seno/left
+File Path: /home/seno/left/qww.rar
+Directory: /home/seno/left
+File Path: /home/seno/left/qww.rar
+Directory: /home/seno/left
+File Path: /home/seno/left/qww.rar
+Directory: /home/seno/left
+File Path: /home/seno/left/qww.rar
+Directory: /home/seno/left
+File Path: /home/seno/left/qww.rar
+Directory: /home/seno/left
+File Path: /home/seno/left/qww.rar
+Directory: /home/seno/left
+File Path: /home/seno/left/qww.rar
+Directory: /home/seno/left
+File Path: /home/seno/left/qww.rar
+Directory: /home/seno/left
+File Path: /home/seno/left/qww.rar
+Directory: /home/seno/left
+File Path: /home/seno/left/qww.rar
+Directory: /home/seno/left
+File Path: /home/seno/left/qww.rar
+Directory: /home/seno/left
+File Path: /home/seno/left/qww.rar
+Directory: /home/seno/left
+File Path: /home/seno/left/qww.rar
+Directory: /home/seno/left
+File Path: /home/seno/left/qww.rar
+Directory: /home/seno/left
+File Path: /home/seno/left/qww.rar
+Directory: /home/seno/left
+File Path: /home/seno/left/qww.rar
+Directory: /home/seno/left
+File Path: /home/seno/left/qww.rar
+Directory: /home/seno/left
+File Path: /home/seno/left/qww.rar
+Directory: /home/seno/left
+File Path: /home/seno/left/qww.rar
+Directory: /home/seno/left
+File Path: /home/seno/left/qww.rar
+Directory: /home/seno/left
+File Path: /home/seno/left/qww.rar
+Directory: /home/seno/left
+File Path: /home/seno/left/qww.rar
+Directory: /home/seno/left
+File Path: /home/seno/left/qww.rar
+Directory: /home/seno/left
+File Path: /home/seno/left/qww.rar
+Directory: /home/seno/left
+File Path: /home/seno/left/qww.rar
+Directory: /home/seno/left
+File Path: /home/seno/left/qww.rar
+Directory: /home/seno/left
+File Path: /home/seno/left/qww.rar
+Directory: /home/seno/left
+File Path: /home/seno/left/qww.rar
+Directory: /home/seno/left
+File Path: /home/seno/left/lol.rar
+Directory: /home/seno/left
+File Path: /home/seno/left/qww.rar
+Directory: /home/seno/left
+File Path: /home/seno/left/qww.rar
+Directory: /home/seno/left
+File Path: /home/seno/left/qww.rar
+Directory: /home/seno/left

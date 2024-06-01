@@ -226,7 +226,7 @@ void drawFileList(WINDOW *win, const FileList *fileList, const SelectedFiles *se
             if (!fileList->entries[i].isDir)
             {
                 long long size = fileList->entries[i].size;
-                char unit = ' ';
+                char unit = 'B';
                 if (size >= 1024)
                 {
                     size /= 1024;
@@ -236,6 +236,11 @@ void drawFileList(WINDOW *win, const FileList *fileList, const SelectedFiles *se
                 {
                     size /= 1024;
                     unit = 'M';
+                }
+                if (size >= 1024)
+                {
+                    size /= 1024;
+                    unit = 'G'; // делим, пока не приведём к нужной единице измерения
                 }
                 mvwprintw(win, line, xMax - 20, "%5lld%c", size, unit);
             }
@@ -294,20 +299,11 @@ void handleResize(FileList *fileList1, FileList *fileList2, WINDOW **win1, WINDO
     mvwin(*win2, 1, maxx / 2 + 1);
 }
 
-void createArchive(const char *archiveName, const char *files[], int numFiles, const char *extension)
+void logToFile(const char *filePath, const char *directory)
 {
-    char command[1024];
-    sprintf(command, "tar -cvf %s.%s", archiveName, extension);
-    for (int i = 0; i < numFiles; i++)
-    {
-        strcat(command, " ");
-        strcat(command, files[i]);
-    }
-    system(command);
-}
-void logToFile(const char *filePath, const char *directory) {
     FILE *file = fopen("/home/seno/proj/project/test.txt", "a");
-    if (file == NULL) {
+    if (file == NULL)
+    {
         printf("Failed to open file for writing.\n");
         return;
     }
@@ -334,7 +330,7 @@ void extractArchive(const char *filePath)
 
     // Записываем информацию о filePath и directory в файл
     logToFile(filePath, dirName);
-endwin();
+    endwin();
     pid_t pid = fork();
     if (pid == 0)
     {
@@ -390,8 +386,8 @@ endwin();
             printf("Error extracting archive.\n");
         }
     }
-refresh();
-free(directory); // Освобождаем память, выделенную для копии filePath
+    refresh();
+    free(directory); // Освобождаем память, выделенную для копии filePath
 }
 
 void openFileWithEvince(char *filepath)
@@ -599,45 +595,119 @@ void copyFile(const char *srcPath, const char *destPath, const char *fileName)
     fclose(destFile);
 }
 
-void createDirectory(const char *basePath)
+void createDirectory(const char *basePath, const char *dirName)
 {
-    char dirName[256];
-    echo(); // Turn on echoing of characters
-    mvprintw(maxy - 1, 0, "Enter new directory name: ");
-    getnstr(dirName, sizeof(dirName) - 1); // Get user input
-    noecho();                              // Turn off echoing of characters
-    refresh();
-
     char fullPath[PATH_MAX];
     snprintf(fullPath, sizeof(fullPath), "%s/%s", basePath, dirName);
 
     if (mkdir(fullPath, 0755) == 0)
     {
-        mvprintw(maxy - 1, 0, "Directory created: %s", fullPath);
+        mvprintw(LINES - 1, 0, "Directory created: %s", fullPath);
     }
     else
     {
-        mvprintw(maxy - 1, 0, "Failed to create directory: %s", fullPath);
+        mvprintw(LINES - 1, 0, "Failed to create directory: %s", fullPath);
     }
     clrtoeol();
     refresh();
 }
 
+void createArchive(const char *archiveName, const char *files[], int numFiles, const char *currentPath)
+{
+    if (numFiles == 0)
+    {
+        return; // No files to archive
+    }
+
+    char command[2048];                                                               // Increased buffer size to accommodate longer file paths
+    snprintf(command, sizeof(command), "rar a \"%s/%s\" ", currentPath, archiveName); // Command for creating RAR archive
+
+    for (int i = 0; i < numFiles; i++)
+    {
+        struct stat fileStat;
+        if (stat(files[i], &fileStat) == 0)
+        {
+
+            strcat(command, "\""); // Enclose file paths in double quotes to handle spaces
+            strcat(command, files[i]);
+            strcat(command, "\" ");
+        }
+    }
+
+    endwin();        // Close curses window
+    system(command); // Execute the command to create the RAR archive
+}
+
+void createDirectoryOrArchive(const char *currentPath, SelectedFiles *selectedFiles)
+{
+    WINDOW *confirm_win = newwin(3, COLS - 2, LINES - 4, 1);
+    box(confirm_win, 0, 0);
+    mvwprintw(confirm_win, 1, 2, "Create (d)irectory or (a)rchive?");
+    wrefresh(confirm_win);
+
+    int choice = wgetch(confirm_win);
+    werase(confirm_win);
+    wrefresh(confirm_win);
+    delwin(confirm_win);
+
+    if (choice == 'd' || choice == 'a')
+    {
+        char name[MAX_FILENAME_LENGTH];
+        WINDOW *input_win = newwin(3, COLS - 2, LINES - 4, 1);
+        box(input_win, 0, 0);
+        mvwprintw(input_win, 1, 2, "Enter name: ");
+        wrefresh(input_win);
+
+        echo();
+        mvwgetnstr(input_win, 1, 13, name, sizeof(name) - 1);
+        noecho();
+
+        werase(input_win);
+        wrefresh(input_win);
+        delwin(input_win);
+        refresh();
+
+        if (choice == 'd')
+        {
+            createDirectory(currentPath, name);
+        }
+        else if (choice == 'a')
+        {
+            if (selectedFiles->numSelectedFiles == 0)
+            {
+                mvprintw(LINES - 1, 0, "No files selected for archive.");
+                clrtoeol();
+                refresh();
+                return;
+            }
+            createArchive(name, (const char **)selectedFiles->selectedFiles, selectedFiles->numSelectedFiles, currentPath);
+            for (int i = 0; i < selectedFiles->numSelectedFiles; i++)
+            {
+                free(selectedFiles->selectedFiles[i]);
+            }
+            selectedFiles->numSelectedFiles = 0;
+        }
+    }
+}
+
 void renameFile(const char *path, const char *fileName)
 {
     char newFileName[MAX_FILENAME_LENGTH];
+    WINDOW *input_win = newwin(3, COLS - 2, LINES - 4, 1);
+    box(input_win, 0, 0);
+    const char *prompt = "Enter new name for %s: ";
+    int prompt_len = strlen(prompt) + strlen(fileName);
+    mvwprintw(input_win, 1, 2, prompt, fileName);
+    wrefresh(input_win);
+
     echo(); // Включаем отображение введенных символов
-
-    // Очищаем и обновляем status_win
-    werase(status_win);
-    wattron(status_win, A_BOLD | A_REVERSE);
-    mvwprintw(status_win, 0, 0, "Status Window: Enter new name for %s: ", fileName);
-    wattroff(status_win, A_BOLD | A_REVERSE);
-    wrefresh(status_win);
-
-    // Получаем новое имя файла от пользователя
-    mvgetstr(0, strlen("Status Window: Enter new name for ") + strlen(fileName) + 2, newFileName);
+    mvwgetnstr(input_win, 1, prompt_len - 1, newFileName, sizeof(newFileName) - 1);
     noecho(); // Выключаем отображение введенных символов
+
+    // Очищаем и обновляем input_win
+    werase(input_win);
+    wrefresh(input_win);
+    delwin(input_win);
 
     // Получаем расширение исходного имени файла, если оно есть
     const char *extension = strrchr(fileName, '.');
@@ -658,17 +728,16 @@ void renameFile(const char *path, const char *fileName)
     // Переименовываем файл с помощью функции rename
     if (rename(oldPath, newPath) == 0)
     {
-        // Очищаем и обновляем status_win
-        werase(status_win);
-        wprintw(status_win, "File renamed successfully to %s.\n", newFileName);
+        // Обновляем status_win с сообщением об успешном переименовании
+        mvprintw(LINES - 1, 0, "File renamed successfully to %s.", newFileName);
     }
     else
     {
-        // Очищаем и обновляем status_win
-        werase(status_win);
-        wprintw(status_win, "Failed to rename file.\n");
+        // Обновляем status_win с сообщением о неудаче
+        mvprintw(LINES - 1, 0, "Failed to rename file.");
     }
-    wrefresh(status_win);
+    clrtoeol();
+    refresh();
 }
 
 void getInfo(char *filepath, int maxy, int maxx)
@@ -742,7 +811,7 @@ int main()
     int activePanel = 1; // 1 for panel 1 (left), 2 for panel 2 (right)
 
     while (1)
-    { 
+    {
         populateFileList(&fileList1, path1);
         populateFileList(&fileList2, path2);
 
@@ -910,7 +979,7 @@ int main()
             refresh();
             break;
         case 'n':
-            createDirectory(currentPath);
+            createDirectoryOrArchive(currentPath, &selectedFiles);
             break;
         case 'i':
         {
@@ -939,14 +1008,15 @@ int main()
             }
         }
         break;
-case 'x': {
-    const char *currentPath = (activePanel == 1) ? path1 : path2;
-    const char *selectedFileName = (activePanel == 1) ? fileList1.entries[fileList1.selected].name : fileList2.entries[fileList2.selected].name;
-    char fullPath[PATH_MAX];
-    snprintf(fullPath, sizeof(fullPath), "%s/%s", currentPath, selectedFileName);
-        extractArchive(fullPath);
-}
-break;
+        case 'x':
+        {
+            const char *currentPath = (activePanel == 1) ? path1 : path2;
+            const char *selectedFileName = (activePanel == 1) ? fileList1.entries[fileList1.selected].name : fileList2.entries[fileList2.selected].name;
+            char fullPath[PATH_MAX];
+            snprintf(fullPath, sizeof(fullPath), "%s/%s", currentPath, selectedFileName);
+            extractArchive(fullPath);
+        }
+        break;
         case '\t': // Tab key
             activePanel = (activePanel == 1) ? 2 : 1;
             break;
