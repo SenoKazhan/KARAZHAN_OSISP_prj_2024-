@@ -88,3 +88,11 @@ File Path: /home/seno/right/ll.rar
 Directory: /home/seno/right
 File Path: /home/seno/left/st.rar
 Directory: /home/seno/left
+File Path: /home/seno/left/st.rar
+Directory: /home/seno/left
+File Path: /home/seno/left/st.rar
+Directory: /home/seno/left
+File Path: /home/seno/left/st.rar
+Directory: /home/seno/left
+File Path: /home/seno/left/ww.rar
+Directory: /home/seno/left

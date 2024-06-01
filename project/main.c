@@ -342,7 +342,7 @@ void extractArchive(const char *filePath)
             extension++; // Пропускаем точку
             if (strcmp(extension, "rar") == 0)
             {
-                snprintf(command, sizeof(command), "/usr/bin/unrar x %s %s", filePath, dirName);
+                snprintf(command, sizeof(command), "rar x %s %s", filePath, dirName);
             }
             else if (strcmp(extension, "gz") == 0)
             {
@@ -477,6 +477,39 @@ void openFile(const char *path, const char *fileName)
     }
 }
 
+void removeDirectoryRecursively(const char *path)
+{
+    DIR *dir = opendir(path);
+    if (dir == NULL)
+        return;
+
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != NULL)
+    {
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+        {
+            continue;
+        }
+
+        char fullPath[PATH_MAX];
+        snprintf(fullPath, sizeof(fullPath), "%s/%s", path, entry->d_name);
+
+        struct stat pathStat;
+        if (stat(fullPath, &pathStat) == 0)
+        {
+            if (S_ISDIR(pathStat.st_mode))
+            {
+                removeDirectoryRecursively(fullPath);
+            }
+            else
+            {
+                remove(fullPath);
+            }
+        }
+    }
+    closedir(dir);
+    rmdir(path);
+}
 void removeFile(const char *path, const char *fileName)
 {
     box(confirm_win, 0, 0);
@@ -507,28 +540,45 @@ void removeFile(const char *path, const char *fileName)
     // Clear the confirmation window
     werase(confirm_win);
     box(confirm_win, 0, 0);
+
+    // Clear the confirmation window
+    werase(confirm_win);
+    box(confirm_win, 0, 0);
     // Process user input
     if (ch == 'y')
     {
-        // Remove the file
+        // Remove the file or directory
         char fullPath[PATH_MAX];
         snprintf(fullPath, sizeof(fullPath), "%s/%s", path, fileName);
-        if (remove(fullPath) == 0)
+        // Эта структура предназначена для хранения информации о файловой системе
+        struct stat pathStat;
+        if (stat(fullPath, &pathStat) == 0) // получаем информацию о директории (нахождении)
         {
-            // If deletion is successful, display a message in the confirmation window
-            mvwprintw(confirm_win, 3, (confirmWidth - strlen("Deleted successfully")) / 2, "Deleted successfully");
-            wrefresh(confirm_win);
-            getch();
-        }
-        else
-        {
-            // If deletion fails, display an error message in the confirmation window
-            mvwprintw(confirm_win, 3, (confirmWidth - strlen("Failed to delete")) / 2, "Failed to delete");
-            wrefresh(confirm_win);
-            getch();
+            if (S_ISDIR(pathStat.st_mode))
+            {
+                removeDirectoryRecursively(fullPath);
+            }
+            else
+            {
+                if (remove(fullPath) == 0)
+                {
+                    // If deletion is successful, display a message in the confirmation window
+                    mvwprintw(confirm_win, 3, (confirmWidth - strlen("Deleted successfully")) / 2, "Deleted successfully");
+                    wrefresh(confirm_win);
+                    getch();
+                }
+                else
+                {
+                    // If deletion fails, display an error message in the confirmation window
+                    mvwprintw(confirm_win, 3, (confirmWidth - strlen("Failed to delete")) / 2, "Failed to delete");
+                    wrefresh(confirm_win);
+                    getch();
+                }
+            }
         }
     }
     werase(confirm_win);
+    delwin(confirm_win);
 }
 
 void moveFile(const char *srcPath, const char *destPath, const char *fileName)
@@ -619,9 +669,9 @@ void createArchive(const char *archiveName, const char *files[], int numFiles, c
         return; // No files to archive
     }
 
-    char command[2048];                                                               // Increased buffer size to accommodate longer file paths
-    snprintf(command, sizeof(command), "rar a -ep \"%s/%s\" ", currentPath, archiveName); // Command for creating RAR archive
-
+    char command[2048]; // Increased buffer size to accommodate longer file paths
+    snprintf(command, sizeof(command), "rar a -ep \"%s/%s\" ", currentPath, archiveName);
+    // a create, -ep Exclude paths from names
     for (int i = 0; i < numFiles; i++)
     {
         struct stat fileStat;
