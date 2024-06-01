@@ -342,7 +342,7 @@ void extractArchive(const char *filePath)
             extension++; // Пропускаем точку
             if (strcmp(extension, "rar") == 0)
             {
-                snprintf(command, sizeof(command), "/usr/bin/unrar e %s %s", filePath, dirName);
+                snprintf(command, sizeof(command), "/usr/bin/unrar x %s %s", filePath, dirName);
             }
             else if (strcmp(extension, "gz") == 0)
             {
@@ -620,7 +620,7 @@ void createArchive(const char *archiveName, const char *files[], int numFiles, c
     }
 
     char command[2048];                                                               // Increased buffer size to accommodate longer file paths
-    snprintf(command, sizeof(command), "rar a \"%s/%s\" ", currentPath, archiveName); // Command for creating RAR archive
+    snprintf(command, sizeof(command), "rar a -ep \"%s/%s\" ", currentPath, archiveName); // Command for creating RAR archive
 
     for (int i = 0; i < numFiles; i++)
     {
