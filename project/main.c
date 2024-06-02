@@ -510,6 +510,7 @@ void removeDirectoryRecursively(const char *path)
     closedir(dir);
     rmdir(path);
 }
+
 void removeFile(const char *path, const char *fileName)
 {
     box(confirm_win, 0, 0);
@@ -838,6 +839,50 @@ void getInfo(char *filepath, int maxy, int maxx)
     }
 }
 
+void showHelp() {
+    const char *helpText[] = {
+        "Help:",
+        "Up/Down Arrow: Navigate",
+        "Left/Right Arrow: Change Directory",
+        "o: Open File",
+        "d: Delete File",
+        "c: Copy File",
+        "m: Move File",
+        "a: Select File",
+        "q: Quit",
+    };
+    int numLines = sizeof(helpText) / sizeof(helpText[0]);
+    int width = 0;
+
+    for (int i = 0; i < numLines; ++i) {
+        int len = strlen(helpText[i]);
+        if (len > width) {
+            width = len;
+        }
+    }
+
+    width += 4; // Add padding
+    int height = numLines + 2;
+    int startY = (LINES - height) / 2;
+    int startX = (COLS - width) / 2;
+
+    WINDOW *help_win = newwin(height, width, startY, startX);
+    box(help_win, 0, 0);
+
+    // Центрирование заголовка "Help:"
+    int titleLen = strlen(helpText[0]);
+    int titlePosX = (width - titleLen) / 2;
+    mvwprintw(help_win, 1, titlePosX, "%s", helpText[0]);
+
+    for (int i = 1; i < numLines; ++i) {
+        mvwprintw(help_win, i + 1, 2, "%s", helpText[i]);
+    }
+
+    wrefresh(help_win);
+    wgetch(help_win);
+    delwin(help_win);
+}
+
 int main()
 {
     initializeCurses();
@@ -1069,6 +1114,9 @@ int main()
         break;
         case '\t': // Tab key
             activePanel = (activePanel == 1) ? 2 : 1;
+            break;
+        case 'h':
+            showHelp();
             break;
         case 'q':
             clear();
