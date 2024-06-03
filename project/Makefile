@@ -27,7 +27,4 @@ clean:
 	rm *.o
 	rm *~
 
-install:
-	install -Dm 755 $(PROG) $(BINDIR)/$(PROG)
-	install -Dm 644 cfiles.1 $(MANDIR)/man1/cfiles.1
 

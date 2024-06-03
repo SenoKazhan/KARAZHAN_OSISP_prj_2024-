@@ -13,6 +13,7 @@
 #include <errno.h>
 #include <libgen.h> // For dirname() function
 WINDOW *win1, *win2, *status_win, *confirm_win;
+struct stat buffer;
 int maxy, maxx;
 int confirmHeight = 7;
 int confirmWidth = 50;
@@ -21,9 +22,8 @@ int confirmWidth = 50;
 
 int is_regular_file(const char *path)
 {
-    struct stat path_stat;
-    stat(path, &path_stat);
-    return S_ISREG(path_stat.st_mode);
+    stat(path, &buffer);
+    return S_ISREG(buffer.st_mode);
 }
 
 typedef struct
@@ -120,12 +120,11 @@ void populateFileList(FileList *fileList, const char *path)
         char fullpath[PATH_MAX];
         snprintf(fullpath, sizeof(fullpath), "%s/%s", path, entry->d_name);
 
-        struct stat entry_stat;
-        if (stat(fullpath, &entry_stat) == 0)
+        if (stat(fullpath, &buffer) == 0)
         {
-            fileList->entries[fileList->count].isDir = S_ISDIR(entry_stat.st_mode);
-            fileList->entries[fileList->count].size = entry_stat.st_size;
-            fileList->entries[fileList->count].date = entry_stat.st_mtime;
+            fileList->entries[fileList->count].isDir = S_ISDIR(buffer.st_mode);
+            fileList->entries[fileList->count].size = buffer.st_size;
+            fileList->entries[fileList->count].date = buffer.st_mtime;
         }
         else
         {
@@ -493,10 +492,10 @@ void removeDirectoryRecursively(const char *path)
         char fullPath[PATH_MAX];
         snprintf(fullPath, sizeof(fullPath), "%s/%s", path, entry->d_name);
 
-        struct stat pathStat;
-        if (stat(fullPath, &pathStat) == 0)
+
+        if (stat(fullPath, &buffer) == 0)
         {
-            if (S_ISDIR(pathStat.st_mode))
+            if (S_ISDIR(buffer.st_mode))
             {
                 removeDirectoryRecursively(fullPath);
             }
@@ -551,10 +550,9 @@ void removeFile(const char *path, const char *fileName)
         char fullPath[PATH_MAX];
         snprintf(fullPath, sizeof(fullPath), "%s/%s", path, fileName);
         // Эта структура предназначена для хранения информации о файловой системе
-        struct stat pathStat;
-        if (stat(fullPath, &pathStat) == 0) // получаем информацию о директории (нахождении)
+        if (stat(fullPath, &buffer) == 0) // получаем информацию о директории (нахождении)
         {
-            if (S_ISDIR(pathStat.st_mode))
+            if (S_ISDIR(buffer.st_mode))
             {
                 removeDirectoryRecursively(fullPath);
             }
@@ -581,69 +579,91 @@ void removeFile(const char *path, const char *fileName)
     delwin(confirm_win);
 }
 
-void moveFile(const char *srcPath, const char *destPath, const char *fileName)
-{
+
+int getUserChoice() {
+    wclear(confirm_win);
+    box(confirm_win, 0, 0);
+
+    const char *message = "File already exists. What do you want to do?";
+    const char *choices = "(o)verwrite, (s)kip";
+    int message_len = strlen(message);
+    int choices_len = strlen(choices);
+
+    mvwprintw(confirm_win, 2, (confirmWidth - message_len) / 2, "%s", message);
+    mvwprintw(confirm_win, 4, (confirmWidth - choices_len) / 2, "%s", choices);
+    wrefresh(confirm_win);
+
+    int ch = wgetch(confirm_win);
+    while (ch != 'o' && ch != 's') {
+        ch = wgetch(confirm_win);
+    }
+    return ch;
+}
+
+
+void moveFile(const char *srcPath, const char *destPath, const char *fileName) {
     char srcFullPath[PATH_MAX];
     char destFullPath[PATH_MAX];
     snprintf(srcFullPath, sizeof(srcFullPath), "%s/%s", srcPath, fileName);
     snprintf(destFullPath, sizeof(destFullPath), "%s/%s", destPath, fileName);
 
-    // Пытаемся переместить файл
-    rename(srcFullPath, destFullPath);
+    if (stat(destFullPath, &buffer) == 0) {
+        int choice = getUserChoice();
+        if (choice == 's') {
+            return; // Skip the file
+    }
+    }
+
+    if (rename(srcFullPath, destFullPath) != 0) {
+        perror("Error moving file");
+    }
 }
 
-void copyFile(const char *srcPath, const char *destPath, const char *fileName)
-{
+void copyFile(const char *srcPath, const char *destPath, const char *fileName) {
     char srcFullPath[PATH_MAX];
     char destFullPath[PATH_MAX];
 
-    // Формируем полный путь к исходному файлу
     snprintf(srcFullPath, PATH_MAX, "%s/%s", srcPath, fileName);
-
-    // Формируем полный путь к файлу назначения
     snprintf(destFullPath, PATH_MAX, "%s/%s", destPath, fileName);
+    if (stat(destFullPath, &buffer) == 0) {
+        int choice = getUserChoice();
+        if (choice == 's') {
+            return; // Skip the file
+        }
+    }
 
-    // Открываем исходный файл для чтения
     FILE *srcFile = fopen(srcFullPath, "rb");
-    if (srcFile == NULL)
-    {
-        perror("Ошибка при открытии исходного файла");
+    if (srcFile == NULL) {
+        perror("Error opening source file");
         return;
     }
 
-    // Открываем файл назначения для записи
     FILE *destFile = fopen(destFullPath, "wb");
-    if (destFile == NULL)
-    {
-        perror("Ошибка при открытии файла назначения");
+    if (destFile == NULL) {
+        perror("Error opening destination file");
         fclose(srcFile);
         return;
     }
 
-    // Копируем содержимое файла
     char buffer[BUFSIZ];
     size_t bytesRead;
-    while ((bytesRead = fread(buffer, 1, BUFSIZ, srcFile)) > 0)
-    {
-        if (fwrite(buffer, 1, bytesRead, destFile) != bytesRead)
-        {
-            perror("Ошибка при записи в файл назначения");
+    while ((bytesRead = fread(buffer, 1, BUFSIZ, srcFile)) > 0) {
+        if (fwrite(buffer, 1, bytesRead, destFile) != bytesRead) {
+            perror("Error writing to destination file");
             fclose(srcFile);
             fclose(destFile);
             return;
         }
     }
 
-    // Проверяем, не произошла ли ошибка при чтении из исходного файла
-    if (ferror(srcFile))
-    {
-        perror("Ошибка при чтении из исходного файла");
+    if (ferror(srcFile)) {
+        perror("Error reading from source file");
     }
 
-    // Закрываем файлы
     fclose(srcFile);
     fclose(destFile);
 }
+
 
 void createDirectory(const char *basePath, const char *dirName)
 {
@@ -674,8 +694,7 @@ void createArchive(const char *archiveName, const char *files[], int numFiles, c
     // a create, -ep Exclude paths from names
     for (int i = 0; i < numFiles; i++)
     {
-        struct stat fileStat;
-        if (stat(files[i], &fileStat) == 0)
+        if (stat(files[i], &buffer) == 0)
         {
 
             strcat(command, "\""); // Enclose file paths in double quotes to handle spaces
