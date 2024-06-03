@@ -13,7 +13,7 @@
 #include <errno.h>
 #include <libgen.h> // For dirname() function
 WINDOW *win1, *win2, *status_win, *confirm_win;
-struct stat buffer;
+
 int maxy, maxx;
 int confirmHeight = 7;
 int confirmWidth = 50;
@@ -21,9 +21,9 @@ int confirmWidth = 50;
 #define MAX_SELECTED_FILES 100 // Or any other number you prefer
 
 int is_regular_file(const char *path)
-{
-    stat(path, &buffer);
-    return S_ISREG(buffer.st_mode);
+{   struct stat pathinfo;
+    stat(path, &pathinfo);
+    return S_ISREG(pathinfo.st_mode);
 }
 
 typedef struct
@@ -97,6 +97,7 @@ int compareEntries(const void *a, const void *b)
 
 void populateFileList(FileList *fileList, const char *path)
 {
+    struct stat pathinfo;
     DIR *dir;
     struct dirent *entry;
 
@@ -120,11 +121,11 @@ void populateFileList(FileList *fileList, const char *path)
         char fullpath[PATH_MAX];
         snprintf(fullpath, sizeof(fullpath), "%s/%s", path, entry->d_name);
 
-        if (stat(fullpath, &buffer) == 0)
+        if (stat(fullpath, &pathinfo) == 0)
         {
-            fileList->entries[fileList->count].isDir = S_ISDIR(buffer.st_mode);
-            fileList->entries[fileList->count].size = buffer.st_size;
-            fileList->entries[fileList->count].date = buffer.st_mtime;
+            fileList->entries[fileList->count].isDir = S_ISDIR(pathinfo.st_mode);
+            fileList->entries[fileList->count].size = pathinfo.st_size;
+            fileList->entries[fileList->count].date = pathinfo.st_mtime;
         }
         else
         {
@@ -475,6 +476,7 @@ void openFile(const char *path, const char *fileName)
     }
 }
 
+// Функция для рекурсивного удаления директорий
 void removeDirectoryRecursively(const char *path)
 {
     DIR *dir = opendir(path);
@@ -492,10 +494,10 @@ void removeDirectoryRecursively(const char *path)
         char fullPath[PATH_MAX];
         snprintf(fullPath, sizeof(fullPath), "%s/%s", path, entry->d_name);
 
-
-        if (stat(fullPath, &buffer) == 0)
+        struct stat pathinfo;  // Локальная переменная
+        if (stat(fullPath, &pathinfo) == 0)
         {
-            if (S_ISDIR(buffer.st_mode))
+            if (S_ISDIR(pathinfo.st_mode))
             {
                 removeDirectoryRecursively(fullPath);
             }
@@ -509,9 +511,11 @@ void removeDirectoryRecursively(const char *path)
     rmdir(path);
 }
 
+// Функция для удаления файла
 void removeFile(const char *path, const char *fileName)
-{
+{  
     box(confirm_win, 0, 0);
+    int confirmWidth = 50;
     mvwprintw(confirm_win, 2, (confirmWidth - strlen("Are you sure you want to delete")) / 2, "Are you sure you want to delete");
     wattron(confirm_win, COLOR_PAIR(3));
     mvwprintw(confirm_win, 3, (confirmWidth - strlen(fileName) - 1) / 2, "%s?", fileName);
@@ -540,19 +544,16 @@ void removeFile(const char *path, const char *fileName)
     werase(confirm_win);
     box(confirm_win, 0, 0);
 
-    // Clear the confirmation window
-    werase(confirm_win);
-    box(confirm_win, 0, 0);
-    // Process user input
+    // Обработка ввода пользователя
     if (ch == 'y')
     {
-        // Remove the file or directory
         char fullPath[PATH_MAX];
         snprintf(fullPath, sizeof(fullPath), "%s/%s", path, fileName);
-        // Эта структура предназначена для хранения информации о файловой системе
-        if (stat(fullPath, &buffer) == 0) // получаем информацию о директории (нахождении)
+
+        struct stat statinfo;  // Локальная переменная
+        if (stat(fullPath, &statinfo) == 0)
         {
-            if (S_ISDIR(buffer.st_mode))
+            if (S_ISDIR(statinfo.st_mode))
             {
                 removeDirectoryRecursively(fullPath);
             }
@@ -560,14 +561,12 @@ void removeFile(const char *path, const char *fileName)
             {
                 if (remove(fullPath) == 0)
                 {
-                    // If deletion is successful, display a message in the confirmation window
                     mvwprintw(confirm_win, 3, (confirmWidth - strlen("Deleted successfully")) / 2, "Deleted successfully");
                     wrefresh(confirm_win);
                     getch();
                 }
                 else
                 {
-                    // If deletion fails, display an error message in the confirmation window
                     mvwprintw(confirm_win, 3, (confirmWidth - strlen("Failed to delete")) / 2, "Failed to delete");
                     wrefresh(confirm_win);
                     getch();
@@ -576,7 +575,7 @@ void removeFile(const char *path, const char *fileName)
         }
     }
     werase(confirm_win);
-    delwin(confirm_win);
+    wrefresh(confirm_win);
 }
 
 
@@ -602,12 +601,13 @@ int getUserChoice() {
 
 
 void moveFile(const char *srcPath, const char *destPath, const char *fileName) {
+    struct stat pathinfo;
     char srcFullPath[PATH_MAX];
     char destFullPath[PATH_MAX];
     snprintf(srcFullPath, sizeof(srcFullPath), "%s/%s", srcPath, fileName);
     snprintf(destFullPath, sizeof(destFullPath), "%s/%s", destPath, fileName);
 
-    if (stat(destFullPath, &buffer) == 0) {
+    if (stat(destFullPath, &pathinfo) == 0) {
         int choice = getUserChoice();
         if (choice == 's') {
             return; // Skip the file
@@ -622,10 +622,10 @@ void moveFile(const char *srcPath, const char *destPath, const char *fileName) {
 void copyFile(const char *srcPath, const char *destPath, const char *fileName) {
     char srcFullPath[PATH_MAX];
     char destFullPath[PATH_MAX];
-
+struct stat pathinfo;
     snprintf(srcFullPath, PATH_MAX, "%s/%s", srcPath, fileName);
     snprintf(destFullPath, PATH_MAX, "%s/%s", destPath, fileName);
-    if (stat(destFullPath, &buffer) == 0) {
+    if (stat(destFullPath, &pathinfo) == 0) {
         int choice = getUserChoice();
         if (choice == 's') {
             return; // Skip the file
@@ -688,13 +688,13 @@ void createArchive(const char *archiveName, const char *files[], int numFiles, c
     {
         return; // No files to archive
     }
-
+struct stat pathinfo;
     char command[2048]; // Increased buffer size to accommodate longer file paths
     snprintf(command, sizeof(command), "rar a -ep \"%s/%s\" ", currentPath, archiveName);
     // a create, -ep Exclude paths from names
     for (int i = 0; i < numFiles; i++)
     {
-        if (stat(files[i], &buffer) == 0)
+        if (stat(files[i], &pathinfo) == 0)
         {
 
             strcat(command, "\""); // Enclose file paths in double quotes to handle spaces
@@ -1044,8 +1044,14 @@ int main()
         case 'o':
             openFile(currentPath, selectedFileName);
             break;
-        case 'd':
+        case 'd':{
+            if (selectedFiles.numSelectedFiles > 0){
             removeFile(currentPath, selectedFileName);
+            }
+            else {
+                continue;
+            }
+        }
             break;
         case 'c':
             if (selectedFiles.numSelectedFiles > 0)
