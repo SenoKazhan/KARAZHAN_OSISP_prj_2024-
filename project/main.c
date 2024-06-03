@@ -17,7 +17,6 @@ int maxy, maxx;
 int confirmHeight = 7;
 int confirmWidth = 50;
 #define MAX_FILENAME_LENGTH 256
-#define SHOW_SELECTION_COUNT 1
 #define MAX_SELECTED_FILES 100 // Or any other number you prefer
 
 int is_regular_file(const char *path)
@@ -433,7 +432,7 @@ void openTextFile(const char *path, const char *fileName)
         waitpid(pid, NULL, 0);
 
         // Clear the screen and refresh
-        clear();
+        endwin();
         refresh();
     }
 }
@@ -840,7 +839,7 @@ void getInfo(char *filepath, int maxy, int maxx)
 }
 
 void showHelp() {
-    const char *helpText[] = {
+    const char *helpText[] = { //массив указателей на строковые константы
         "Help:",
         "Up/Down Arrow: Navigate",
         "Left/Right Arrow: Change Directory",
