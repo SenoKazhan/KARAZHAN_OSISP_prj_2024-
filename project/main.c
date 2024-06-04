@@ -8,7 +8,9 @@
 #include <fcntl.h>    // For open, O_CREAT, O_WRONLY
 #include <unistd.h>   // For dup2, fork, execlp
 #include <sys/wait.h> // For waitpid
+#include <wchar.h>
 #include <ncurses.h>
+#include <locale.h>
 #include <time.h>
 #include <errno.h>
 #include <libgen.h> // For dirname() function
@@ -517,18 +519,8 @@ void removeFile(const char *path, const char *fileName)
     box(confirm_win, 0, 0);
     int confirmWidth = 50;
     mvwprintw(confirm_win, 2, (confirmWidth - strlen("Are you sure you want to delete")) / 2, "Are you sure you want to delete");
-    wattron(confirm_win, COLOR_PAIR(3));
     mvwprintw(confirm_win, 3, (confirmWidth - strlen(fileName) - 1) / 2, "%s?", fileName);
-    wattroff(confirm_win, COLOR_PAIR(3));
-    mvwprintw(confirm_win, 4, (confirmWidth - strlen("Press 'y' to confirm or 'n' to cancel.")) / 2, "Press '");
-    wattron(confirm_win, COLOR_PAIR(3));
-    wprintw(confirm_win, "y");
-    wattroff(confirm_win, COLOR_PAIR(3));
-    wprintw(confirm_win, "' to confirm or '");
-    wattron(confirm_win, COLOR_PAIR(5));
-    wprintw(confirm_win, "n");
-    wattroff(confirm_win, COLOR_PAIR(5));
-    wprintw(confirm_win, "' to cancel.");
+    mvwprintw(confirm_win, 4, (confirmWidth - strlen("Press 'y' to confirm or 'n' to cancel.")) / 2, "Press 'y' to confirm or 'n' to cancel.");
     wrefresh(confirm_win);
 
     // Wait for user confirmation
@@ -903,6 +895,7 @@ void showHelp() {
 
 int main()
 {
+    setlocale(LC_ALL, "");
     initializeCurses();
     char path1[PATH_MAX] = "/home/seno/left";
     char path2[PATH_MAX] = "/home/seno/right";
