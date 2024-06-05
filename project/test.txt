@@ -1,2 +1,14 @@
 File Path: /home/seno/left/srty.txt
 Directory: /home/seno/left
+File Path: /home/seno/right/ll.rar
+Directory: /home/seno/right
+File Path: /home/seno/right/a.rar
+Directory: /home/seno/right
+File Path: /home/seno/right/Синтез функции.pdf
+Directory: (null)
+File Path: /home/seno/right/Синтез функции.pdf
+Directory: (null)
+File Path: /home/seno/right/Синтез функции.pdf
+Directory: (null)
+File Path: /home/seno/right/tesraerch.rar
+Directory: /home/seno/right

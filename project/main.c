@@ -8,7 +8,6 @@
 #include <fcntl.h>    // For open, O_CREAT, O_WRONLY
 #include <unistd.h>   // For dup2, fork, execlp
 #include <sys/wait.h> // For waitpid
-#include <wchar.h>
 #include <ncurses.h>
 #include <locale.h>
 #include <time.h>
@@ -23,7 +22,8 @@ int confirmWidth = 50;
 #define MAX_SELECTED_FILES 100 // Or any other number you prefer
 
 int is_regular_file(const char *path)
-{   struct stat pathinfo;
+{
+    struct stat pathinfo;
     stat(path, &pathinfo);
     return S_ISREG(pathinfo.st_mode);
 }
@@ -35,7 +35,7 @@ typedef struct
     int isDir;
     off_t size;  // Размер файла
     time_t date; // Дата добавления файла
-    char unit;   // // Единица измерения ('B', 'K', 'M', 'G')
+    char unit;   // Единица измерения ('B', 'K', 'M', 'G')
 } FileEntry;
 
 typedef struct
@@ -391,12 +391,14 @@ void extractArchive(const char *filePath)
     free(directory); // Освобождаем память, выделенную для копии filePath
 }
 
-void openFileWithEvince(char *filepath)
+void openFileWithEvince(const char *filepath)
 {
     char command[1024];
-    snprintf(command, sizeof(command), "evince %s >/dev/null 2>&1 &", filepath);
+    snprintf(command, sizeof(command), "evince \"%s\" >/dev/null 2>&1 &", filepath);
     system(command);
 }
+//Помещаем filepath (полный путь к файлу) в двойные кавычки "
+//Без кавычек, если в пути есть пробелы, система будет воспринимать их как разделители аргументов, что приведет к неправильному открытию файла.
 
 void openTextFile(const char *path, const char *fileName)
 {
@@ -473,8 +475,8 @@ void openFile(const char *path, const char *fileName)
     }
     else
     {
-        mvwprintw(status_win, 0, 0, "File has no extension: %s", fileName);
-        wrefresh(status_win);
+        openTextFile(path, fileName);
+        initializeCurses();
     }
 }
 
@@ -496,7 +498,7 @@ void removeDirectoryRecursively(const char *path)
         char fullPath[PATH_MAX];
         snprintf(fullPath, sizeof(fullPath), "%s/%s", path, entry->d_name);
 
-        struct stat pathinfo;  // Локальная переменная
+        struct stat pathinfo; // Локальная переменная
         if (stat(fullPath, &pathinfo) == 0)
         {
             if (S_ISDIR(pathinfo.st_mode))
@@ -515,7 +517,7 @@ void removeDirectoryRecursively(const char *path)
 
 // Функция для удаления файла
 void removeFile(const char *path, const char *fileName)
-{  
+{
     box(confirm_win, 0, 0);
     int confirmWidth = 50;
     mvwprintw(confirm_win, 2, (confirmWidth - strlen("Are you sure you want to delete")) / 2, "Are you sure you want to delete");
@@ -542,7 +544,7 @@ void removeFile(const char *path, const char *fileName)
         char fullPath[PATH_MAX];
         snprintf(fullPath, sizeof(fullPath), "%s/%s", path, fileName);
 
-        struct stat statinfo;  // Локальная переменная
+        struct stat statinfo; // Локальная переменная
         if (stat(fullPath, &statinfo) == 0)
         {
             if (S_ISDIR(statinfo.st_mode))
@@ -570,8 +572,8 @@ void removeFile(const char *path, const char *fileName)
     wrefresh(confirm_win);
 }
 
-
-int getUserChoice() {
+int getUserChoice()
+{
     wclear(confirm_win);
     box(confirm_win, 0, 0);
 
@@ -585,53 +587,62 @@ int getUserChoice() {
     wrefresh(confirm_win);
 
     int ch = wgetch(confirm_win);
-    while (ch != 'o' && ch != 's') {
+    while (ch != 'o' && ch != 's')
+    {
         ch = wgetch(confirm_win);
     }
     return ch;
 }
 
-
-void moveFile(const char *srcPath, const char *destPath, const char *fileName) {
+void moveFile(const char *srcPath, const char *destPath, const char *fileName)
+{
     struct stat pathinfo;
     char srcFullPath[PATH_MAX];
     char destFullPath[PATH_MAX];
     snprintf(srcFullPath, sizeof(srcFullPath), "%s/%s", srcPath, fileName);
     snprintf(destFullPath, sizeof(destFullPath), "%s/%s", destPath, fileName);
 
-    if (stat(destFullPath, &pathinfo) == 0) {
+    if (stat(destFullPath, &pathinfo) == 0)
+    {
         int choice = getUserChoice();
-        if (choice == 's') {
+        if (choice == 's')
+        {
             return; // Skip the file
-    }
+        }
     }
 
-    if (rename(srcFullPath, destFullPath) != 0) {
+    if (rename(srcFullPath, destFullPath) != 0)
+    {
         perror("Error moving file");
     }
 }
 
-void copyFile(const char *srcPath, const char *destPath, const char *fileName) {
+void copyFile(const char *srcPath, const char *destPath, const char *fileName)
+{
     char srcFullPath[PATH_MAX];
     char destFullPath[PATH_MAX];
-struct stat pathinfo;
+    struct stat pathinfo;
     snprintf(srcFullPath, PATH_MAX, "%s/%s", srcPath, fileName);
     snprintf(destFullPath, PATH_MAX, "%s/%s", destPath, fileName);
-    if (stat(destFullPath, &pathinfo) == 0) {
+    if (stat(destFullPath, &pathinfo) == 0)
+    {
         int choice = getUserChoice();
-        if (choice == 's') {
+        if (choice == 's')
+        {
             return; // Skip the file
         }
     }
 
     FILE *srcFile = fopen(srcFullPath, "rb");
-    if (srcFile == NULL) {
+    if (srcFile == NULL)
+    {
         perror("Error opening source file");
         return;
     }
 
     FILE *destFile = fopen(destFullPath, "wb");
-    if (destFile == NULL) {
+    if (destFile == NULL)
+    {
         perror("Error opening destination file");
         fclose(srcFile);
         return;
@@ -639,8 +650,10 @@ struct stat pathinfo;
 
     char buffer[BUFSIZ];
     size_t bytesRead;
-    while ((bytesRead = fread(buffer, 1, BUFSIZ, srcFile)) > 0) {
-        if (fwrite(buffer, 1, bytesRead, destFile) != bytesRead) {
+    while ((bytesRead = fread(buffer, 1, BUFSIZ, srcFile)) > 0)
+    {
+        if (fwrite(buffer, 1, bytesRead, destFile) != bytesRead)
+        {
             perror("Error writing to destination file");
             fclose(srcFile);
             fclose(destFile);
@@ -648,14 +661,14 @@ struct stat pathinfo;
         }
     }
 
-    if (ferror(srcFile)) {
+    if (ferror(srcFile))
+    {
         perror("Error reading from source file");
     }
 
     fclose(srcFile);
     fclose(destFile);
 }
-
 
 void createDirectory(const char *basePath, const char *dirName)
 {
@@ -680,10 +693,11 @@ void createArchive(const char *archiveName, const char *files[], int numFiles, c
     {
         return; // No files to archive
     }
-struct stat pathinfo;
+    struct stat pathinfo;
     char command[2048]; // Increased buffer size to accommodate longer file paths
     snprintf(command, sizeof(command), "rar a -ep \"%s/%s\" ", currentPath, archiveName);
-    // a create, -ep Exclude paths from names
+    // tar -cf name.tar.gz -C /home/seno/proj/fciles .
+    //  a create, -ep Exclude paths from names
     for (int i = 0; i < numFiles; i++)
     {
         if (stat(files[i], &pathinfo) == 0)
@@ -849,8 +863,10 @@ void getInfo(char *filepath, int maxy, int maxx)
     }
 }
 
-void showHelp() {
-    const char *helpText[] = { //массив указателей на строковые константы
+void showHelp()
+{
+    const char *helpText[] = {
+        // массив указателей на строковые константы
         "Help:",
         "Up/Down Arrow: Navigate",
         "Left/Right Arrow: Change Directory",
@@ -864,9 +880,11 @@ void showHelp() {
     int numLines = sizeof(helpText) / sizeof(helpText[0]);
     int width = 0;
 
-    for (int i = 0; i < numLines; ++i) {
+    for (int i = 0; i < numLines; ++i)
+    {
         int len = strlen(helpText[i]);
-        if (len > width) {
+        if (len > width)
+        {
             width = len;
         }
     }
@@ -884,7 +902,8 @@ void showHelp() {
     int titlePosX = (width - titleLen) / 2;
     mvwprintw(help_win, 1, titlePosX, "%s", helpText[0]);
 
-    for (int i = 1; i < numLines; ++i) {
+    for (int i = 1; i < numLines; ++i)
+    {
         mvwprintw(help_win, i + 1, 2, "%s", helpText[i]);
     }
 
@@ -1037,15 +1056,24 @@ int main()
         case 'o':
             openFile(currentPath, selectedFileName);
             break;
-        case 'd':{
-            if (selectedFiles.numSelectedFiles > 0){
-            removeFile(currentPath, selectedFileName);
+        case 'd':
+        {
+            const char *srcPath = (activePanel == 1) ? path1 : path2;
+
+            for (int i = 0; i < selectedFiles.numSelectedFiles; i++)
+            {
+                char *fileName = basename(selectedFiles.selectedFiles[i]);
+                removeFile(srcPath, fileName);
             }
-            else {
-                continue;
+
+            // Очистка списка выбранных файлов
+            for (int i = 0; i < selectedFiles.numSelectedFiles; i++)
+            {
+                free(selectedFiles.selectedFiles[i]);
             }
+            selectedFiles.numSelectedFiles = 0;
         }
-            break;
+        break;
         case 'c':
             if (selectedFiles.numSelectedFiles > 0)
             {
